@@ -37,7 +37,7 @@ def cli(ctx: click.Context, api_key: str | None) -> None:
 
 @cli.group()
 def articles() -> None:
-    """Read articles from dev.to."""
+    """Read, create, and update dev.to articles."""
 
 
 @articles.command("list")
@@ -74,6 +74,106 @@ def articles_by_slug(ctx, username, slug):
 def articles_me(ctx, page, per_page):
     """List your own articles (requires API key)."""
     _run(ctx, lambda c: c.list_my_articles(page=page, per_page=per_page))
+
+
+_OPTIONAL_FIELDS = ("title", "description", "canonical_url", "main_image", "series")
+
+
+def _build_article_payload(
+    *,
+    body_markdown: str,
+    title: str | None,
+    description: str | None,
+    tags: tuple[str, ...],
+    published: bool | None,
+    canonical_url: str | None,
+    main_image: str | None,
+    series: str | None,
+    organization_id: int | None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {"body_markdown": body_markdown}
+    locals_map = {
+        "title": title,
+        "description": description,
+        "canonical_url": canonical_url,
+        "main_image": main_image,
+        "series": series,
+    }
+    for key in _OPTIONAL_FIELDS:
+        value = locals_map[key]
+        if value is not None:
+            payload[key] = value
+    if tags:
+        payload["tags"] = list(tags)
+    if published is not None:
+        payload["published"] = published
+    if organization_id is not None:
+        payload["organization_id"] = organization_id
+    return payload
+
+
+def _article_options(fn):
+    fn = click.option("--title", help="Override article title (else taken from frontmatter).")(fn)
+    fn = click.option("--description", help="Short description / subtitle.")(fn)
+    fn = click.option("--tag", "tags", multiple=True, help="Tag (repeatable).")(fn)
+    fn = click.option(
+        "--published/--draft",
+        "published",
+        default=None,
+        help="Publish or save as draft. Omit to inherit from frontmatter.",
+    )(fn)
+    fn = click.option("--canonical-url", help="Canonical URL for cross-posting.")(fn)
+    fn = click.option("--main-image", help="Cover image URL.")(fn)
+    fn = click.option("--series", help="Series name to attach the article to.")(fn)
+    fn = click.option("--organization-id", type=int, help="Publish under an organization.")(fn)
+    return fn
+
+
+@articles.command("create")
+@click.argument("markdown_file", type=click.Path(exists=True, dir_okay=False, readable=True))
+@_article_options
+@click.pass_context
+def articles_create(
+    ctx, markdown_file, title, description, tags, published, canonical_url, main_image, series, organization_id
+):
+    """Create a new article from a markdown file (requires API key)."""
+    body = click.open_file(markdown_file, "r", encoding="utf-8").read()
+    payload = _build_article_payload(
+        body_markdown=body,
+        title=title,
+        description=description,
+        tags=tags,
+        published=published,
+        canonical_url=canonical_url,
+        main_image=main_image,
+        series=series,
+        organization_id=organization_id,
+    )
+    _run(ctx, lambda c: c.create_article(payload))
+
+
+@articles.command("update")
+@click.argument("article_id", type=int)
+@click.argument("markdown_file", type=click.Path(exists=True, dir_okay=False, readable=True))
+@_article_options
+@click.pass_context
+def articles_update(
+    ctx, article_id, markdown_file, title, description, tags, published, canonical_url, main_image, series, organization_id
+):
+    """Update an existing article from a markdown file (requires API key)."""
+    body = click.open_file(markdown_file, "r", encoding="utf-8").read()
+    payload = _build_article_payload(
+        body_markdown=body,
+        title=title,
+        description=description,
+        tags=tags,
+        published=published,
+        canonical_url=canonical_url,
+        main_image=main_image,
+        series=series,
+        organization_id=organization_id,
+    )
+    _run(ctx, lambda c: c.update_article(article_id, payload))
 
 
 @cli.group()

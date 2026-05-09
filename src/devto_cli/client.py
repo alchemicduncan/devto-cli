@@ -51,6 +51,17 @@ class DevToClient:
             raise DevToError(f"GET {path} failed: {response.status_code} {response.text}")
         return response.json()
 
+    def _send(self, method: str, path: str, *, json_body: dict[str, Any]) -> Any:
+        response = self._http.request(
+            method,
+            path,
+            json=json_body,
+            headers=self._headers(require_auth=True),
+        )
+        if response.status_code >= 400:
+            raise DevToError(f"{method} {path} failed: {response.status_code} {response.text}")
+        return response.json()
+
     # --- Articles ---
 
     def list_articles(
@@ -87,6 +98,12 @@ class DevToClient:
         if per_page is not None:
             params["per_page"] = per_page
         return self._get("/articles/me", params=params, require_auth=True)
+
+    def create_article(self, article: dict[str, Any]) -> dict[str, Any]:
+        return self._send("POST", "/articles", json_body={"article": article})
+
+    def update_article(self, article_id: int, article: dict[str, Any]) -> dict[str, Any]:
+        return self._send("PUT", f"/articles/{article_id}", json_body={"article": article})
 
     # --- Users ---
 
