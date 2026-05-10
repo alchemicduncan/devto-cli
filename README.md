@@ -32,3 +32,24 @@ uv run devto articles update 1234567 post.md --published
 ```
 
 Output is JSON on stdout — pipe to `jq` to filter.
+
+## Agent skills
+
+The repo also ships agent skills (Claude Code-compatible `SKILL.md` files) that teach an agent how to drive this CLI:
+
+- `devto-get-article` — fetch one article by ID or `username/slug`
+- `devto-list-articles` — list / filter articles, including your drafts
+- `devto-publish-article` — upload or update an article from a markdown file
+
+Canonical sources live in `skills/`. They are auto-loaded in this repo via `.claude/skills` (symlink).
+
+To install them into another project:
+
+```bash
+cd /path/to/your/project
+npx devto-cli-skills install            # writes to .claude/skills/
+npx devto-cli-skills install --target .cursor/skills   # custom target
+npx devto-cli-skills install --force    # overwrite existing
+```
+
+The installer source lives in `installer/` — see `installer/README.md`.

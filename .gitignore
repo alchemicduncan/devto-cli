@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local agent config (skills install target — distributed via skills/ + npx installer)
+.claude/
+.gemini/
+
